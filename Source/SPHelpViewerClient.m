@@ -79,11 +79,21 @@ static BOOL isOSAtLeast10_14 = NO;
 			NSBeep();
 		}
 	}
-	
 	return self;
 }
 
-#pragma mark -
+- (void)dealloc
+{
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+	[controller setDataSource:nil]; // we are the (unretained) datasource, but the controller may outlive us (if retained by other objects)
+	[controller close]; // hide the window if it is still visible (can't update anymore without delegate anyway)
+	
+	mySQLConnection = nil;
+	SPClear(controller);
+	SPClear(helpHTMLTemplate);
+	SPClear(engine);
+	[super dealloc];
+}
 
 - (void)helpViewerClosed:(NSNotification *)notification
 {
@@ -94,14 +104,10 @@ static BOOL isOSAtLeast10_14 = NO;
 - (void)openOnlineHelpForTopic:(NSString *)searchString
 {
 	NSString *version = nil;
-
-	if (![mySQLConnection serverVersionIsGreaterThanOrEqualTo:4 minorVersion:1 releaseVersion:0])
-	{
+	if(![mySQLConnection serverVersionIsGreaterThanOrEqualTo:4 minorVersion:1 releaseVersion:0])
 		version = @"4.1";
-	}
-	else {
+	else
 		version = [NSString stringWithFormat:@"%u.%u",(unsigned int)[mySQLConnection serverMajorVersion], (unsigned int)[mySQLConnection serverMinorVersion]];
-	}
 
 	NSString *url = [[NSString stringWithFormat:
 		SPMySQLSearchURL,
@@ -110,9 +116,7 @@ static BOOL isOSAtLeast10_14 = NO;
 		searchString]
 		stringByAddingPercentEscapesUsingEncoding:NSASCIIStringEncoding];
 
-	if ([url length]) {
-		[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:url]];
-	}
+	if([url length]) [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:url]];
 }
 
 - (NSString *)HTMLHelpContentsForSearchString:(NSString *)searchString autoHelp:(BOOL)autoHelp
@@ -214,14 +218,10 @@ static BOOL isOSAtLeast10_14 = NO;
 		// iterate through all found rows and print them as HTML ul/li list
 		[theHelp appendString:@"<ul>"];
 		[theResult setDefaultRowReturnType:SPMySQLResultRowAsArray];
-
-		for (NSArray *eachRow in theResult)
-		{
-			NSString *topic = [eachRow objectAtIndex:[eachRow count] - 2];
-
-			[theHelp appendFormat:@"<li>%@</li>", [[self class] linkToHelpTopic:topic]];
+		for (NSArray *eachRow in theResult) {
+			NSString *topic = [eachRow objectAtIndex:[eachRow count]-2];
+			[theHelp appendFormat:@"<li>%@</li>",[[self class] linkToHelpTopic:topic]];
 		}
-
 		[theHelp appendString:@"</ul>"];
 	}
 
@@ -278,24 +278,6 @@ generate_help:
 {
 	NSString *searchString = [[sender string] substringWithRange:[sender getRangeForCurrentWord]];
 	[controller showHelpFor:searchString addToHistory:YES calledByAutoHelp:NO];
-}
-
-#pragma mark -
-
-- (void)dealloc
-{
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
-
-	[controller setDataSource:nil]; // we are the (unretained) datasource, but the controller may outlive us (if retained by other objects)
-	[controller close]; // hide the window if it is still visible (can't update anymore without delegate anyway)
-
-	mySQLConnection = nil;
-
-	SPClear(controller);
-	SPClear(helpHTMLTemplate);
-	SPClear(engine);
-
-	[super dealloc];
 }
 
 @end

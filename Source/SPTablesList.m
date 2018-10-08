@@ -166,8 +166,7 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 #endif
 	tableListIsSelectable = YES;
 #ifndef SP_CODA
-	[self deselectAllTables];
-
+	[[tablesListView onMainThread] deselectAll:self];
 	tableListIsSelectable = previousTableListIsSelectable;
 #endif
 	SPMainQSync(^{
@@ -575,24 +574,24 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 
 	[[tableDocumentInstance parentWindow] endEditingFor:nil];
 
+	// Detect table type: table or view
 	NSInteger tblType = [[filteredTableTypes objectAtIndex:[tablesListView selectedRow]] integerValue];
 
-	switch (tblType)
-	{
+	switch (tblType){
 		case SPTableTypeTable:
-			tableType = NSLocalizedString(@"table", @"table");
+			tableType = NSLocalizedString(@"table",@"table");
 			[copyTableContentSwitch setEnabled:YES];
 			break;
 		case SPTableTypeView:
-			tableType = NSLocalizedString(@"view", @"view");
+			tableType = NSLocalizedString(@"view",@"view");
 			[copyTableContentSwitch setEnabled:NO];
 			break;
 		case SPTableTypeProc:
-			tableType = NSLocalizedString(@"procedure", @"procedure");
+			tableType = NSLocalizedString(@"procedure",@"procedure");
 			[copyTableContentSwitch setEnabled:NO];
 			break;
 		case SPTableTypeFunc:
-			tableType = NSLocalizedString(@"function", @"function");
+			tableType = NSLocalizedString(@"function",@"function");
 			[copyTableContentSwitch setEnabled:NO];
 			break;
 	}
@@ -811,6 +810,7 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 	}
 #endif
 }
+
 
 /**
  * Updates application state to match the current selection, including
@@ -1167,11 +1167,6 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 #endif
 }
 
-- (void)deselectAllTables
-{
-	[[tablesListView onMainThread] deselectAll:self];
-}
-
 #pragma mark -
 #pragma mark Getter methods
 
@@ -1408,15 +1403,12 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 #ifndef SP_CODA /* table list filtering */
 	if (!isTableListFiltered) {
 		[tablesListView selectRowIndexes:[NSIndexSet indexSetWithIndex:itemIndex] byExtendingSelection:NO];
-	}
-	else {
+	} else {
 		NSInteger filteredIndex = [filteredTables indexOfObject:[tables objectAtIndex:itemIndex]];
-
 		if (filteredIndex != NSNotFound) {
 			[tablesListView selectRowIndexes:[NSIndexSet indexSetWithIndex:filteredIndex] byExtendingSelection:NO];
-		}
-		else {
-			[self deselectAllTables];
+		} else {
+			[tablesListView deselectAll:nil];
 #endif
 			if (selectedTableName) [selectedTableName release];
 			
@@ -1466,14 +1458,10 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 
 	if (!isTableListFiltered) {
 		[tablesListView selectRowIndexes:selectionIndexSet byExtendingSelection:NO];
-	}
-	else {
-		[self deselectAllTables];
-
+	} else {
+		[tablesListView deselectAll:nil];
 		[listFilterField setStringValue:@""];
-
 		[self updateFilter:self];
-
 		[tablesListView selectRowIndexes:selectionIndexSet byExtendingSelection:NO];
 	}
 
@@ -1999,12 +1987,11 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 /**
  * Update the filter search.
  */
-- (IBAction)updateFilter:(id)sender
+- (IBAction) updateFilter:(id)sender
 {
 	// Don't try and maintain selections of multiple rows through filtering
 	if ([tablesListView numberOfSelectedRows] > 1) {
-		[self deselectAllTables];
-
+		[tablesListView deselectAll:self];
 		if (selectedTableName) SPClear(selectedTableName);
 	}
 
@@ -2304,8 +2291,7 @@ static NSString *SPDuplicateTable = @"SPDuplicateTable";
 	}
 
 	[tablesListView reloadData];
-
-	[self deselectAllTables];
+	[tablesListView deselectAll:self];
 
 #ifndef SP_CODA
 	[tableDocumentInstance updateWindowTitle:self];
